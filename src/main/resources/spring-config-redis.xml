@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xmlns:jee="http://www.springframework.org/schema/jee"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.2.xsd
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-3.2.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+		http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.2.xsd">
+
+    <bean id="redisProperties" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="order" value="4"/>
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name="locations">
+            <list>
+                <value>classpath*:/service-config.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- redis工厂 -->
+    <!-- Jedis ConnectionFactory -->
+    <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+        <property name="maxIdle" value="${redis.pool.maxIdle}"/>
+        <property name="testOnBorrow" value="${redis.pool.testOnBorrow}"/>
+    </bean>
+
+    <bean id="jedisPoolFactory" class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory">
+        <property name="hostName" value="${redis.hostname}"/>
+        <property name="port" value="${redis.port}"/>
+        <property name="usePool" value="true"/>
+        <property name="poolConfig" ref="jedisPoolConfig"/>
+    </bean>
+
+
+    <!-- redis模板配置 -->
+    <bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+        <property name="connectionFactory" ref="jedisPoolFactory"/>
+        <property name="defaultSerializer">
+            <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>
+        </property>
+    </bean>
+
+    <!-- 节点配置 -->
+    <bean id="jedisCluster" class="redis.clients.jedis.JedisCluster">
+        <!-- 第二个参数 -->
+        <constructor-arg index="1" ref="jedisPoolConfig"/>
+        <!-- 第一个参数 -->
+        <constructor-arg index="0">
+            <set>
+                <bean name="cluster1" class="redis.clients.jedis.HostAndPort">
+                    <constructor-arg index="0" value="${redis.hostname}"/>
+                    <constructor-arg index="1" value="${redis.port}" type="int"/>
+                </bean>
+            </set>
+        </constructor-arg>
+    </bean>
+
+    <bean id="redisHelper" class="top.bigpong.dao.RedisHelper">
+        <property name="domain" value="dmq"/>
+        <property name="redisTemplate" ref="redisTemplate"/>
+    </bean>
+
+    <bean id="jedisHelper" class="top.bigpong.dao.JedisHelper">
+        <property name="domain" value="dmq"/>
+        <property name="jedisCluster" ref="jedisCluster"/>
+    </bean>
+
+</beans>
